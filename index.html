@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>HyperSage Trace — Evaluation Report</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="dot"></span><b>HyperSage Trace · Eval Report</b>
+      <span class="sub" id="doc-sub">Post-fix synthesized-answer quality</span></div>
+    <nav>
+      <a href="index.html" class="active">Analytics</a>
+      <a href="tests.html">Tests</a>
+    </nav>
+  </header>
+
+  <main id="analytics">
+    <h1 class="page">Analytics &amp; Results</h1>
+    <p class="page-sub">LLM-judge evaluation of HyperSage's <b>trace</b> agent on real Slack incident
+      queries, scored against the dev team's thread resolution across five parameters.</p>
+
+    <section>
+      <div class="hero" id="hero"></div>
+    </section>
+
+    <section>
+      <h2>Overall by answer type</h2>
+      <div id="overall-compare"></div>
+    </section>
+
+    <section>
+      <h2>Coverage</h2>
+      <div class="cards" id="cards"></div>
+    </section>
+
+    <section>
+      <h2>Per-parameter mean (1–5)</h2>
+      <div class="legend" id="plegend"></div>
+      <div class="params" id="params"></div>
+    </section>
+
+    <section>
+      <h2>Score distribution — synthesized answers</h2>
+      <div class="dist" id="dist"></div>
+    </section>
+
+    <section>
+      <h2>By channel</h2>
+      <table class="simple" id="channels"></table>
+    </section>
+
+    <section>
+      <h2>Methodology</h2>
+      <div class="note">
+        Each Slack conversation deemed useful for the trace agent was replayed through the deployed
+        HyperSage instance; the produced answer was scored 1–5 on <b>accuracy, relevancy, completeness,
+        safety, reasoning</b> by an LLM judge, comparing it to the dev team's actual Slack-thread
+        resolution. "Synthesized" = trace reached a conclusion; "no-conclusive" = it safely reported it
+        couldn't (e.g. the historical data isn't in staging). Open the <a href="tests.html">Tests</a> tab
+        to inspect any individual case.
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">Generated from the trace-eval run · open <a href="tests.html">Tests</a> to drill in.</footer>
+
+  <script src="data.js"></script>
+  <script src="assets/marked.min.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

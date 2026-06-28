@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tests — HyperSage Trace Eval</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="dot"></span><b>HyperSage Trace · Eval Report</b>
+      <span class="sub" id="doc-sub">Per-test results</span></div>
+    <nav>
+      <a href="index.html">Analytics</a>
+      <a href="tests.html" class="active">Tests</a>
+    </nav>
+  </header>
+
+  <main id="tests">
+    <h1 class="page">Tests</h1>
+    <p class="page-sub">Every evaluated query with its overall rating. Click a row to compare HyperSage's
+      answer against the dev's Slack thread and see why the evaluator scored each parameter.</p>
+
+    <div class="controls">
+      <input type="search" id="search" placeholder="Search query, channel, or answer…" />
+      <select id="filter" title="Filter">
+        <option value="all">All answers</option>
+        <option value="synth">Synthesized only</option>
+        <option value="nc">No-conclusive only</option>
+      </select>
+      <select id="sort" title="Sort">
+        <option value="overall_desc">Highest rating</option>
+        <option value="overall_asc">Lowest rating</option>
+        <option value="channel">Channel</option>
+      </select>
+      <span class="count" id="tcount"></span>
+    </div>
+
+    <div class="tlist" id="tlist"></div>
+  </main>
+
+  <div class="overlay" id="overlay">
+    <div class="modal" id="modal"></div>
+  </div>
+
+  <footer class="foot">Tip: each parameter chip is colored 1 (red) → 5 (green). Press Esc to close a test.</footer>
+
+  <script src="data.js"></script>
+  <script src="assets/marked.min.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

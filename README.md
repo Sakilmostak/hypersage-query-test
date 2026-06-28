@@ -10,15 +10,20 @@ actual Slack-thread resolution.
 
 ## Headline
 
-| Group | Overall (/5) | n |
-|-------|:---:|:---:|
-| **Synthesized** (trace reached a conclusion) | **2.98** | 201 |
-| No-conclusive (safely reported "no data") | 2.73 | 96 |
-| All completed | 2.90 | 297 |
+Same queries, scored before and after the trace fixes (single-agent synthesis bypass, narration
+leak, synthesis-timeout + DB-pool stability):
 
-~30% of synthesized answers score ≥4/5. Safety is consistently high (~4.5); the gap is in
-evidence-backed completeness/reasoning. (Up from a degraded-state baseline of ~2.6 before the
-trace fixes — synthesis-timeout, DB pool, and graceful no-conclusive handling.)
+| Metric | Before | After | Δ |
+|--------|:---:|:---:|:---:|
+| Synthesis rate (reached a conclusion) | 67% | **99%** | +32pt |
+| Overall, synthesized answers (/5) | 2.98 | **3.36** | +0.38 |
+| Overall, paired same-query (/5) | 2.90 | **3.34** | +0.44 |
+| Synthesized answers scoring ≥4/5 | ~30% | **45%** | +15pt |
+
+On the 273 queries scored in both runs: **174 improved, 80 regressed, 19 unchanged**, with far
+larger gains than losses (70 improvements >1.0 vs 19 regressions >1.0). Biggest movers are
+relevancy (+0.89) and completeness (+0.58); safety stays high (~4.7). The current site shows the
+**after** run (290 completed, 289 synthesized).
 
 ## View it
 

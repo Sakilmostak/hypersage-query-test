@@ -50,11 +50,17 @@ def overall(scores: dict) -> float:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--bench", type=Path, default=DEFAULT_BENCH)
+    ap.add_argument("--answers", default="answers_merged.jsonl",
+                    help="answers jsonl filename relative to --bench")
+    ap.add_argument("--evals", default="merged_eval/evals.jsonl",
+                    help="evals jsonl path relative to --bench")
+    ap.add_argument("--baseline", type=float, default=2.98,
+                    help="pre-fix synthesized-overall baseline shown in the hero delta")
     ap.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "data.js")
     args = ap.parse_args()
 
-    answers = {r["unit_id"]: r for r in jl(args.bench / "answers_merged.jsonl")}
-    evals = {e["unit_id"]: e for e in jl(args.bench / "merged_eval" / "evals.jsonl") if e.get("scores")}
+    answers = {r["unit_id"]: r for r in jl(args.bench / args.answers)}
+    evals = {e["unit_id"]: e for e in jl(args.bench / args.evals) if e.get("scores")}
 
     tests = []
     for uid, e in evals.items():
@@ -119,13 +125,15 @@ def main() -> None:
         },
         # context for the narrative panel (from the run journey)
         "context": {
-            "degraded_baseline_overall": 2.6,
+            "degraded_baseline_overall": args.baseline,
             "params_order": PARAMS,
             "note": (
-                "Degraded-state baseline scored ~2.6 overall (synthesis timing out, raw tool dumps). "
-                "After the fixes (synthesis timeout + fast-model fallback, DB pool, graceful no-conclusive), "
-                "trace answers that reach a conclusion on queries with live staging data score as below. "
-                "Scored by an LLM judge against the dev team's Slack thread resolution."
+                "Same queries, before and after the trace fixes. Pre-fix, trace reached a conclusion "
+                "only 67% of the time and synthesized answers scored 2.98 overall. After the fixes "
+                "(single-agent synthesis bypass, narration leak, synthesis-timeout + DB-pool stability), "
+                "it now synthesizes 99% of the time and the synthesized answers below score as shown — "
+                "a paired +0.44 overall gain on the same queries. Scored 1–5 by an LLM judge against "
+                "the dev team's Slack-thread resolution."
             ),
         },
     }

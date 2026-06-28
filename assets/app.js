@@ -55,9 +55,9 @@
       "</div>" +
       "<div>" +
         "<p>" + esc(ctx.note || "") + "</p>" +
-        '<div class="delta">▲ up from a degraded-state baseline of ' +
-          (ctx.degraded_baseline_overall != null ? ctx.degraded_baseline_overall.toFixed(1) : "—") +
-          " overall</div>" +
+        '<div class="delta">▲ up from a pre-fix baseline of ' +
+          (ctx.degraded_baseline_overall != null ? ctx.degraded_baseline_overall.toFixed(2) : "—") +
+          " synthesized overall</div>" +
       "</div>";
 
     // count cards

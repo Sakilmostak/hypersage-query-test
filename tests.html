@@ -18,8 +18,11 @@
 
   <main id="tests">
     <h1 class="page">Tests</h1>
-    <p class="page-sub">Every evaluated query with its overall rating. Click a row to compare HyperSage's
-      answer against the dev's Slack thread and see why the evaluator scored each parameter.</p>
+    <p class="page-sub">Every evaluated query with its overall rating. Pick a run to view, and a run to
+      compare against, to see the per-test improvement. Click a row to compare HyperSage's answer against
+      the dev's Slack thread and see why the evaluator scored each parameter.</p>
+
+    <div id="run-controls" class="runbar"></div>
 
     <div class="controls">
       <input type="search" id="search" placeholder="Search query, channel, or answer…" />

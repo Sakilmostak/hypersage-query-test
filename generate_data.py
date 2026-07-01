@@ -1,18 +1,34 @@
 #!/usr/bin/env python3
-"""Build data.js for the HyperSage trace-eval report site.
+"""Build data.js for the HyperSage trace-eval report site — multi-run (versioned).
 
-Joins the trace-run answers with the LLM-judge evaluations and emits a
-self-contained ``data.js`` (``window.REPORT = {...}``) so the static site works
-over file:// with no server or network.
+Reads a manifest (``runs.json``) listing one or more test runs, each pointing at
+an answers JSONL + an evals JSONL. Emits a self-contained ``data.js``
+(``window.REPORT = {...}``) with:
 
-Inputs (defaults point at the hypersage benchmarks dir; override with --bench):
-    <bench>/answers_merged.jsonl         one record per unit (query, trace_answer,
-                                         reference_dev_reply, status, ...)
-    <bench>/merged_eval/evals.jsonl      one record per unit (scores per parameter)
+    meta      : {title, subtitle, runs:[{id,label,date}], latest, baseline}
+    runsData  : {run_id -> aggregate stats for that run}
+    tests     : [{id, channel, query, runs:{run_id -> {answer, dev, scores, ...}}}]
+
+so the static site can show any run's analytics AND compare improvement per test
+across runs. Works over file:// with no server or network.
+
+Manifest (runs.json), runs ordered oldest -> newest:
+    {
+      "title": "...", "subtitle": "...",
+      "bench": "/abs/path/to/benchmarks/trace_runs",
+      "baseline": "v1", "latest": "v2",
+      "runs": [
+        {"id":"v1","label":"Pre-fix","date":"2026-06-28",
+         "answers":"answers_merged.jsonl","evals":"merged_eval/evals.jsonl","note":"..."},
+        ...
+      ]
+    }
 
 Usage:
-    python3 generate_data.py
-    python3 generate_data.py --bench /path/to/hypersage/benchmarks/trace_runs
+    python3 generate_data.py                     # reads ./runs.json
+    python3 generate_data.py --manifest runs.json
+    # legacy single run (no manifest):
+    python3 generate_data.py --bench <dir> --answers a.jsonl --evals e/evals.jsonl --run-id v1
 """
 
 from __future__ import annotations
@@ -24,6 +40,7 @@ from collections import Counter, defaultdict
 from pathlib import Path
 
 PARAMS = ["accuracy", "relevancy", "completeness", "safety", "reasoning"]
+HERE = Path(__file__).resolve().parent
 DEFAULT_BENCH = Path("/Users/sk.sakil/hypersage/benchmarks/trace_runs")
 
 
@@ -47,29 +64,27 @@ def overall(scores: dict) -> float:
     return round(statistics.mean(scores[p]["score"] for p in PARAMS), 2)
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--bench", type=Path, default=DEFAULT_BENCH)
-    ap.add_argument("--answers", default="answers_merged.jsonl",
-                    help="answers jsonl filename relative to --bench")
-    ap.add_argument("--evals", default="merged_eval/evals.jsonl",
-                    help="evals jsonl path relative to --bench")
-    ap.add_argument("--baseline", type=float, default=2.98,
-                    help="pre-fix synthesized-overall baseline shown in the hero delta")
-    ap.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "data.js")
-    args = ap.parse_args()
+def _gmean(group, p):
+    vals = [t["scores"][p]["score"] for t in group]
+    return round(statistics.mean(vals), 2) if vals else 0.0
 
-    answers = {r["unit_id"]: r for r in jl(args.bench / args.answers)}
-    evals = {e["unit_id"]: e for e in jl(args.bench / args.evals) if e.get("scores")}
 
-    tests = []
+def _goverall(group):
+    return round(statistics.mean(t["overall"] for t in group), 2) if group else 0.0
+
+
+def build_run(bench: Path, answers_file: str, evals_file: str, note: str):
+    """Return (aggregate_meta, {unit_id -> per-test entry}) for a single run."""
+    answers = {r["unit_id"]: r for r in jl(bench / answers_file)}
+    evals = {e["unit_id"]: e for e in jl(bench / evals_file) if e.get("scores")}
+
+    tests = {}
     for uid, e in evals.items():
         a = answers.get(uid, {})
         if a.get("status") != "completed":
             continue
         sc = {p: {"score": int(e["scores"][p]["score"]), "reason": e["scores"][p].get("reason", "")} for p in PARAMS}
-        tests.append({
-            "id": uid,
+        tests[uid] = {
             "channel": a.get("channel") or e.get("channel") or "?",
             "query": (a.get("query") or e.get("query") or "").strip(),
             "hypersage": (a.get("trace_answer") or "").strip(),
@@ -78,72 +93,107 @@ def main() -> None:
             "wall_seconds": a.get("wall_seconds"),
             "scores": sc,
             "overall": overall(sc),
-        })
+        }
 
-    tests.sort(key=lambda t: t["overall"], reverse=True)
-
-    # ---- aggregates ----
-    def group_mean(group, p):
-        vals = [t["scores"][p]["score"] for t in group]
-        return round(statistics.mean(vals), 2) if vals else 0.0
-
-    def group_overall(group):
-        return round(statistics.mean(t["overall"] for t in group), 2) if group else 0.0
-
-    S = [t for t in tests if t["synthesized"]]
-    NC = [t for t in tests if not t["synthesized"]]
-
-    params_table = {
-        p: {"synthesized": group_mean(S, p), "no_conclusive": group_mean(NC, p), "all": group_mean(tests, p)}
-        for p in PARAMS
-    }
+    tl = list(tests.values())
+    S = [t for t in tl if t["synthesized"]]
+    NC = [t for t in tl if not t["synthesized"]]
     dist = Counter(round(t["overall"]) for t in S)
     by_channel = defaultdict(list)
-    for t in tests:
+    for t in tl:
         by_channel[t["channel"]].append(t)
-
     all_answers = list(answers.values())
     status_counts = Counter(r.get("status", "?") for r in all_answers)
 
     meta = {
-        "title": "HyperSage Trace — Evaluation Report",
-        "subtitle": "Post-fix synthesized-answer quality on real Slack incident queries",
         "counts": {
             "attempted": len(all_answers),
-            "evaluated": len(tests),
+            "evaluated": len(tl),
             "synthesized": len(S),
             "no_conclusive": len(NC),
             "status": dict(status_counts),
         },
-        "overall": {"synthesized": group_overall(S), "no_conclusive": group_overall(NC), "all": group_overall(tests)},
-        "params": params_table,
+        "overall": {"synthesized": _goverall(S), "no_conclusive": _goverall(NC), "all": _goverall(tl)},
+        "synthesis_rate": round(100 * len(S) / len(tl), 1) if tl else 0.0,
+        "params": {p: {"synthesized": _gmean(S, p), "no_conclusive": _gmean(NC, p), "all": _gmean(tl, p)} for p in PARAMS},
         "distribution": {str(k): dist.get(k, 0) for k in range(1, 6)},
         "good_pct": round(100 * (dist.get(4, 0) + dist.get(5, 0)) / len(S), 1) if S else 0.0,
         "by_channel": {
-            ch: {"count": len(g), "synthesized": sum(1 for t in g if t["synthesized"]), "overall": group_overall(g)}
+            ch: {"count": len(g), "synthesized": sum(1 for t in g if t["synthesized"]), "overall": _goverall(g)}
             for ch, g in sorted(by_channel.items())
         },
-        # context for the narrative panel (from the run journey)
-        "context": {
-            "degraded_baseline_overall": args.baseline,
-            "params_order": PARAMS,
-            "note": (
-                "Same queries, before and after the trace fixes. Pre-fix, trace reached a conclusion "
-                "only 67% of the time and synthesized answers scored 2.98 overall. After the fixes "
-                "(single-agent synthesis bypass, narration leak, synthesis-timeout + DB-pool stability), "
-                "it now synthesizes 99% of the time and the synthesized answers below score as shown — "
-                "a paired +0.44 overall gain on the same queries. Scored 1–5 by an LLM judge against "
-                "the dev team's Slack-thread resolution."
-            ),
-        },
+        "context": {"note": note or "", "params_order": PARAMS},
     }
+    return meta, tests
 
-    report = {"meta": meta, "tests": tests}
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--manifest", type=Path, default=HERE / "runs.json")
+    ap.add_argument("--out", type=Path, default=HERE / "data.js")
+    # legacy single-run overrides (used only when --manifest is absent)
+    ap.add_argument("--bench", type=Path, default=DEFAULT_BENCH)
+    ap.add_argument("--answers", default=None)
+    ap.add_argument("--evals", default=None)
+    ap.add_argument("--run-id", default="v1")
+    args = ap.parse_args()
+
+    if args.manifest.exists():
+        manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
+    elif args.answers and args.evals:
+        manifest = {
+            "bench": str(args.bench),
+            "runs": [{"id": args.run_id, "label": args.run_id, "date": "", "answers": args.answers, "evals": args.evals}],
+        }
+    else:
+        raise SystemExit(f"No manifest at {args.manifest} and no --answers/--evals given.")
+
+    bench = Path(manifest.get("bench", DEFAULT_BENCH))
+    runs = manifest["runs"]  # oldest -> newest
+    latest = manifest.get("latest") or runs[-1]["id"]
+    baseline = manifest.get("baseline") or runs[0]["id"]
+
+    runs_meta, runs_data, all_tests = [], {}, {}
+    for run in runs:
+        meta, tests = build_run(bench, run["answers"], run["evals"], run.get("note", ""))
+        runs_data[run["id"]] = meta
+        runs_meta.append({"id": run["id"], "label": run["label"], "date": run.get("date", "")})
+        for uid, t in tests.items():
+            entry = all_tests.setdefault(uid, {"id": uid, "channel": t["channel"], "query": t["query"], "runs": {}})
+            # runs are oldest->newest, so later iterations (newer runs) win for stable fields
+            if t["channel"]:
+                entry["channel"] = t["channel"]
+            if t["query"]:
+                entry["query"] = t["query"]
+            entry["runs"][run["id"]] = {k: t[k] for k in ("hypersage", "dev", "synthesized", "wall_seconds", "scores", "overall")}
+
+    tests_list = list(all_tests.values())
+
+    def sort_key(t):
+        r = t["runs"].get(latest) or next(iter(t["runs"].values()))
+        return r["overall"]
+
+    tests_list.sort(key=sort_key, reverse=True)
+
+    report = {
+        "meta": {
+            "title": manifest.get("title", "HyperSage Trace — Evaluation Report"),
+            "subtitle": manifest.get("subtitle", "Versioned LLM-judge evaluation across trace test runs"),
+            "runs": runs_meta,
+            "latest": latest,
+            "baseline": baseline,
+        },
+        "runsData": runs_data,
+        "tests": tests_list,
+    }
     payload = "window.REPORT = " + json.dumps(report, ensure_ascii=False) + ";\n"
     args.out.write_text(payload, encoding="utf-8")
-    print(f"wrote {args.out} — {len(tests)} tests, {len(S)} synthesized | "
-          f"synthesized overall={meta['overall']['synthesized']} all={meta['overall']['all']} "
-          f"| {round(len(payload)/1024)} KB")
+    n_shared = sum(1 for t in tests_list if len(t["runs"]) == len(runs))
+    print(f"wrote {args.out} — {len(runs)} runs {[r['id'] for r in runs_meta]}, "
+          f"{len(tests_list)} unique tests ({n_shared} in all runs) | {round(len(payload)/1024)} KB")
+    for rid, m in runs_data.items():
+        print(f"  {rid}: evaluated={m['counts']['evaluated']} synth_rate={m['synthesis_rate']}% "
+              f"overall(synth)={m['overall']['synthesized']} overall(all)={m['overall']['all']}")
 
 
 if __name__ == "__main__":

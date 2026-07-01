@@ -1,0 +1,25 @@
+{
+  "title": "HyperSage Trace — Evaluation Report",
+  "subtitle": "Versioned LLM-judge evaluation across trace test runs",
+  "bench": "/Users/sk.sakil/hypersage/benchmarks/trace_runs",
+  "baseline": "v1",
+  "latest": "v2",
+  "runs": [
+    {
+      "id": "v1",
+      "label": "Pre-fix baseline",
+      "date": "2026-06-28",
+      "answers": "answers_merged.jsonl",
+      "evals": "merged_eval/evals.jsonl",
+      "note": "Degraded-state baseline: synthesis timing out, raw tool dumps, narration leak. Scored 1–5 by an LLM judge against the dev team's Slack-thread resolution."
+    },
+    {
+      "id": "v2",
+      "label": "Post-fix (deploy #1113)",
+      "date": "2026-06-29",
+      "answers": "answers_full_v2_dedup.jsonl",
+      "evals": "full_v2_eval/evals.jsonl",
+      "note": "After the trace fixes (single-agent synthesis bypass, narration leak, synthesis-timeout + DB-pool stability). Same query set, re-scored against the dev team's Slack-thread resolution."
+    }
+  ]
+}

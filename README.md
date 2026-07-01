@@ -22,8 +22,9 @@ leak, synthesis-timeout + DB-pool stability):
 
 On the 273 queries scored in both runs: **174 improved, 80 regressed, 19 unchanged**, with far
 larger gains than losses (70 improvements >1.0 vs 19 regressions >1.0). Biggest movers are
-relevancy (+0.89) and completeness (+0.58); safety stays high (~4.7). The current site shows the
-**after** run (290 completed, 289 synthesized).
+relevancy (+0.89) and completeness (+0.58); safety stays high (~4.7). The site shows both runs —
+**v1** (pre-fix, 297 scored) and **v2** (post-fix, 290 scored) — defaulting to v2 vs v1; use the run
+selector to switch or add more runs (see *Versioning* below).
 
 ## View it
 
@@ -34,31 +35,56 @@ open index.html        # macOS
 # or double-click index.html
 ```
 
-- **Analytics** (`index.html`) — aggregate scores, per-parameter comparison, distribution, by-channel.
-- **Tests** (`tests.html`) — every evaluated query with its overall rating; click any row to compare
-  HyperSage's answer vs the dev Slack thread and read the evaluator's per-parameter rationale.
+- **Analytics** (`index.html`) — pick a run and a comparison run; see that run's aggregate scores plus
+  an **Improvement across runs** trend table (synthesis rate + overall + per-parameter, with Δ).
+- **Tests** (`tests.html`) — every evaluated query with its rating **and its Δ vs the comparison run**;
+  sort by *most improved / most regressed*. Click a row to compare HyperSage's answer vs the dev Slack
+  thread; use the **version tabs** in the modal to see how that one test's answer + scores changed run-to-run.
+
+## Versioning — multiple runs
+
+The site is multi-run. Runs are declared in **`runs.json`** (ordered oldest → newest):
+
+```jsonc
+{
+  "baseline": "v1", "latest": "v2",
+  "bench": "/path/to/hypersage/benchmarks/trace_runs",
+  "runs": [
+    { "id": "v1", "label": "Pre-fix baseline", "date": "2026-06-28",
+      "answers": "answers_merged.jsonl",       "evals": "merged_eval/evals.jsonl",  "note": "…" },
+    { "id": "v2", "label": "Post-fix (deploy #1113)", "date": "2026-06-29",
+      "answers": "answers_full_v2_dedup.jsonl", "evals": "full_v2_eval/evals.jsonl", "note": "…" }
+  ]
+}
+```
+
+**To add a new run** (e.g. after the next round of fixes): append an entry to `runs.json`, bump
+`latest`, and regenerate. Runs are joined per test by `unit_id`, so any query present in multiple runs
+gets a per-test delta automatically.
 
 ## Regenerate the data
 
-`data.js` is committed so the site is self-contained. To rebuild it from a fresh eval run:
+`data.js` is committed so the site is self-contained. Rebuild it from the manifest:
 
 ```
-python3 generate_data.py --bench /path/to/hypersage/benchmarks/trace_runs
+python3 generate_data.py                 # reads ./runs.json
 ```
 
-It joins `answers_merged.jsonl` (query, trace answer, dev Slack replies) with
-`merged_eval/evals.jsonl` (per-parameter scores + rationale) into `window.REPORT`.
+For each run it joins the answers JSONL (query, trace answer, dev Slack replies) with the evals JSONL
+(per-parameter scores + rationale) into `window.REPORT = { meta, runsData, tests }`, where each test
+carries its per-run entries under `runs: { <run_id>: {…} }`.
 
 ## Layout
 
 ```
-index.html          analytics / results
-tests.html          per-test list + comparison modal
-data.js             window.REPORT = { meta, tests }  (generated, committed)
-generate_data.py    rebuilds data.js from the eval outputs
+runs.json           run manifest (declares the runs shown)
+index.html          analytics / results + cross-run trend
+tests.html          per-test list (+ Δ) + version-compare modal
+data.js             window.REPORT = { meta, runsData, tests }  (generated, committed)
+generate_data.py    rebuilds data.js from the manifest
 assets/
   styles.css        styling
-  app.js            rendering, search/filter/sort, modal
+  app.js            run selector, trend, search/filter/sort, version modal
   marked.min.js     vendored Markdown renderer (offline)
 ```
 

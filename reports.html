@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Reports — HyperSage Trace Eval</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="dot"></span><b>HyperSage Trace · Eval Report</b>
+      <span class="sub" id="doc-sub">Fixes &amp; bugs</span></div>
+    <nav>
+      <a href="index.html">Analytics</a>
+      <a href="tests.html">Tests</a>
+      <a href="concurrency.html">Concurrency</a>
+      <a href="reports.html" class="active">Reports</a>
+    </nav>
+  </header>
+
+  <main id="reports">
+    <h1 class="page">Fixes &amp; bugs</h1>
+    <p class="page-sub">Every bug and improvement this investigation filed on <code>juspay/hypersage</code> — the
+      answer-quality work and the concurrency work — each as a report, grouped by tracking issue. Click any
+      report to open the full issue on GitHub.</p>
+
+    <div id="rp-summary"></div>
+    <div id="rp-body"></div>
+  </main>
+
+  <footer class="foot">Generated from the live GitHub issues via <code>generate_reports.py</code>.</footer>
+
+  <script src="reports_data.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

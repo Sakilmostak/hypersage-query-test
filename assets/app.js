@@ -387,11 +387,11 @@
       "</div>";
     }).join("");
 
-    // improvements
-    var conf = C.improvements;
-    document.getElementById("cc-improve-sub").innerHTML =
+    // improvements (moved to the Reports tab; render only if the container exists)
+    var conf = C.improvements || [], ciSub = document.getElementById("cc-improve-sub"), ciEl = document.getElementById("cc-improve");
+    if (ciSub) ciSub.innerHTML =
       "Verified concurrency improvements from the clean cap-15 run (adversarially checked against the code), tracked under " + issueLink(m.parent_issue, "#" + m.parent_issue) + ".";
-    document.getElementById("cc-improve").innerHTML =
+    if (ciEl) ciEl.innerHTML =
       '<table class="simple cc-improve"><thead><tr><th>Issue</th><th>Improvement</th><th class="num">Severity</th><th class="num">Bottleneck</th><th class="num">Effort</th><th>Fix</th></tr></thead><tbody>' +
       conf.map(function (i) {
         return "<tr><td>" + issueLink(i.issue) + "</td><td><b>" + esc(i.title) + "</b></td>" +
@@ -409,6 +409,46 @@
   }
   function statx(k, v) { return '<div class="sx"><div class="sk">' + esc(k) + '</div><div class="sv">' + (v == null ? "—" : v) + "</div></div>"; }
 
+  // ============================================================== REPORTS
+  function renderReports() {
+    var root = document.getElementById("reports");
+    if (!root || !window.REPORTS) return;
+    var R2 = window.REPORTS, gh = R2.meta.gh, c = R2.meta.counts || {};
+
+    var slabel = { fixed: "fixed", open: "open", tracking: "tracking", artifact: "closed · artifact" };
+    function statusChip(s) { return '<span class="rp-status ' + s + '">' + (slabel[s] || s) + "</span>"; }
+    function ilink(n, txt) { return '<a href="' + gh + n + '" target="_blank" rel="noopener">' + (txt || ("#" + n)) + "</a>"; }
+    // strip a leading "trace:/web:/[Tracking] " style prefix for a cleaner card title
+    function clean(t) { return String(t || "").replace(/^\[Tracking\]\s*/, "").replace(/^(trace|web|web\/db|web\/orchestrator|engine|tools\/deploy)\s*:\s*/i, ""); }
+
+    document.getElementById("rp-summary").innerHTML =
+      '<div class="rp-tot">' +
+        '<span class="rp-pill fixed">' + (c.fixed || 0) + " fixed</span>" +
+        '<span class="rp-pill open">' + (c.open || 0) + " open</span>" +
+        '<span class="rp-pill artifact">' + (c.artifact || 0) + " artifact</span>" +
+        '<span class="rp-tot-n">' + R2.meta.total + " reports across " + R2.categories.length + " areas</span>" +
+      "</div>";
+
+    document.getElementById("rp-body").innerHTML = R2.categories.map(function (cat) {
+      var tracks = cat.tracks.map(function (t) {
+        var p = t.parent || {};
+        var head = '<div class="rp-track-h">' +
+          '<div class="rp-track-t">' + ilink(p.issue, "#" + p.issue) + " · " + esc(clean(p.title)) + " " + statusChip(p.status) + "</div>" +
+          '<div class="rp-track-b">' + esc(t.blurb) + "</div></div>";
+        var cards = t.items.map(function (i) {
+          return '<div class="rp-card ' + i.status + '">' +
+            '<div class="rp-card-h">' + ilink(i.issue) + statusChip(i.status) + '<span class="rp-type">' + esc(i.type) + "</span></div>" +
+            '<div class="rp-title">' + esc(clean(i.title)) + "</div>" +
+            '<div class="rp-sum">' + esc(i.summary || "") + "</div>" +
+            '<a class="rp-open" href="' + gh + i.issue + '" target="_blank" rel="noopener">view issue →</a>' +
+          "</div>";
+        }).join("");
+        return '<div class="rp-track">' + head + '<div class="rp-cards">' + cards + "</div></div>";
+      }).join("");
+      return '<section class="rp-cat"><h2>' + esc(cat.name) + '</h2><p class="page-sub">' + esc(cat.blurb) + "</p>" + tracks + "</section>";
+    }).join("");
+  }
+
   // ---------- boot ----------
   document.addEventListener("DOMContentLoaded", function () {
     var sub = document.getElementById("doc-sub");
@@ -416,5 +456,6 @@
     renderAnalytics();
     renderTests();
     renderConcurrency();
+    renderReports();
   });
 })();

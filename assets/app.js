@@ -352,6 +352,20 @@
       '<th class="num">Wall p50</th><th class="num">cap-429</th><th class="num">409</th><th class="num">Throughput</th><th>Dominant failure</th></tr></thead><tbody>' +
       rows + "</tbody></table>";
 
+    // bugs found & fixed (round 1 — the admission bugs)
+    var fb = C.fixed_bugs || [];
+    var fsub = document.getElementById("cc-fixed-sub");
+    if (fsub) fsub.innerHTML = "The admission bugs the first load test surfaced — all fixed &amp; deployed under " +
+      issueLink(m.fixed_parent, "#" + m.fixed_parent) + ", and re-verified by the runs above.";
+    var fel = document.getElementById("cc-fixed");
+    if (fel) fel.innerHTML =
+      '<table class="simple cc-improve"><thead><tr><th>Issue</th><th>Bug</th><th class="num">Severity</th><th class="num">Status</th><th>Detail</th></tr></thead><tbody>' +
+      fb.map(function (b) {
+        var status = b.verified ? '<span class="chip-ok">fixed · verified ✓</span>' : '<span class="chip-fixed">fixed</span>';
+        return "<tr><td>" + issueLink(b.issue) + "</td><td><b>" + esc(b.title) + "</b></td>" +
+          '<td class="num">' + esc(b.sev) + '</td><td class="num">' + status + "</td><td>" + esc(b.note) + "</td></tr>";
+      }).join("") + "</tbody></table>";
+
     // per-run detail cards
     document.getElementById("cc-detail").innerHTML = C.runs.map(function (r) {
       var pu = Object.keys(r.per_user_completed || {});

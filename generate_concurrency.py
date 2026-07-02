@@ -33,6 +33,22 @@ RUNS = [
          note="Clean re-run (0 connection errors). Real concurrency ~8, completion ~53%. Timeouts become the dominant failure — the bottleneck is now per-investigation latency + the LLM concurrency gate, not admission."),
 ]
 
+FIXED_PARENT = 1161
+FIXED_BUGS = [
+    dict(issue=1162, title="Concurrency slot never released on completion — drained only by the 300s reaper",
+         sev="P1", verified=True,
+         note="The leaky slot release — root cause of the throughput collapse. Fixed: the slot is freed in _run_query's finally, not left for the reaper. Verified: throughput is no longer reaper-gated (22%→43% at cap-5, continuous completions)."),
+    dict(issue=1163, title="Cap was global (not per-user) + session_id never bound to identity (409 guard dead)",
+         sev="High", verified=True,
+         note="Fixed: per-user fairness cap keyed on user.id + X-Session-ID binds the session so the in-flight 409 guard is live. Verified by probe — 4 concurrent/user → 3×200 + 1× per-user 429; same X-Session-ID → 409."),
+    dict(issue=1164, title="'PostgreSQL RO connection stale, reconnecting' logged at WARNING",
+         sev="Low", verified=False,
+         note="Log hygiene — demoted to DEBUG (benign check-on-borrow recovery; 0 failed queries in the window)."),
+    dict(issue=1165, title="Synthesis prompt leaks process narration (humanizer strips it)",
+         sev="Low", verified=False,
+         note="Tightened the NO_NARRATION rule; the humanizer stays as the safety net."),
+]
+
 IMPROVEMENTS = [
     dict(issue=1183, title="Tighten agent/wall-clock timeouts to the client deadline",
          sev="High", effort="trivial (config)", bottleneck=False,
@@ -126,9 +142,11 @@ def main():
             "fixes": [{"issue": 1162, "title": "release cap slot on completion (not the 300s reaper)"},
                       {"issue": 1163, "title": "per-user fairness cap + revived X-Session-ID 409 guard"}],
             "parent_issue": 1182,
+            "fixed_parent": FIXED_PARENT,
             "refuted": REFUTED,
         },
         "runs": runs,
+        "fixed_bugs": FIXED_BUGS,
         "improvements": IMPROVEMENTS,
     }
     payload = "window.CONCURRENCY = " + json.dumps(data, ensure_ascii=False) + ";\n"

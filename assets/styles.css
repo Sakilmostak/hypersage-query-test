@@ -279,3 +279,4 @@ table.cc-runs .thsub, .cc-card .thsub { display:block; color:var(--faint); font-
 table.cc-improve td, table.cc-improve th { padding:10px 12px; vertical-align:top; font-size:13px; }
 .cc-ref { margin:6px 0 0; padding-left:18px; }
 .cc-ref li { margin:4px 0; }
+.chip-fixed { font-size:11.5px; padding:3px 9px; border-radius:999px; color:#bdc8ea; background:rgba(110,139,255,.14); border:1px solid rgba(110,139,255,.4); }

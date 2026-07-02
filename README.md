@@ -40,6 +40,9 @@ open index.html        # macOS
 - **Tests** (`tests.html`) — every evaluated query with its rating **and its Δ vs the comparison run**;
   sort by *most improved / most regressed*. Click a row to compare HyperSage's answer vs the dev Slack
   thread; use the **version tabs** in the modal to see how that one test's answer + scores changed run-to-run.
+- **Concurrency** (`concurrency.html`) — the 5-user concurrency load tests (broken cap-5 → fixed cap-5 →
+  cap-15): completion %, max concurrent, throughput, per-user fairness across runs, plus the verified
+  concurrency improvements. Regenerate with `python3 generate_concurrency.py`.
 
 ## Versioning — multiple runs
 

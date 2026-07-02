@@ -304,11 +304,103 @@
   document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeModal(); });
   document.addEventListener("click", function (e) { var ov = document.getElementById("overlay"); if (ov && e.target === ov) closeModal(); });
 
+  // ============================================================ CONCURRENCY
+  var GH = "https://github.com/juspay/hypersage/issues/";
+  function pctColor(p) { if (p >= 60) return "#2fa86b"; if (p >= 45) return "#5bbf6a"; if (p >= 30) return "#f5c243"; if (p >= 20) return "#f2811d"; return "#e5484d"; }
+  function issueLink(n, label) { return '<a href="' + GH + n + '" target="_blank" rel="noopener">' + (label || ("#" + n)) + "</a>"; }
+  function spark(arr, h) {
+    h = h || 40; if (!arr || !arr.length) return '<span class="faintx">—</span>';
+    var mx = Math.max.apply(null, arr.concat([1]));
+    return '<span class="spark">' + arr.map(function (v) {
+      return '<i style="height:' + Math.max(2, v / mx * h) + "px\" title=\"" + v + '/5min"></i>';
+    }).join("") + "</span>";
+  }
+
+  function renderConcurrency() {
+    var root = document.getElementById("concurrency");
+    if (!root || !window.CONCURRENCY) return;
+    var C = window.CONCURRENCY, m = C.meta;
+
+    // headline
+    document.getElementById("cc-headline").innerHTML =
+      '<div class="cc-hero">' +
+        "<p>" + esc(m.headline) + "</p>" +
+        '<div class="cc-meta"><span>' + esc(m.config) + "</span></div>" +
+        '<div class="cc-chips"><span class="cc-lab">Admission fixes verified working:</span>' +
+          m.fixes.map(function (f) { return '<span class="chip-ok">' + issueLink(f.issue) + " · " + esc(f.title) + "</span>"; }).join("") +
+          '<span class="cc-lab">Tracking:</span><span class="chip-parent">' + issueLink(m.parent_issue, "parent #" + m.parent_issue) + "</span>" +
+        "</div>" +
+      "</div>";
+
+    // runs comparison table
+    var rows = C.runs.map(function (r) {
+      var fail = r.timeout >= r.cap_abandoned ? (r.timeout + " timeout") : (r.cap_abandoned + " cap-abandon");
+      return "<tr>" +
+        "<td><b>" + esc(r.label) + "</b>" + (r.contaminated ? ' <span class="tagx warn">contaminated</span>' : "") +
+          '<br><span class="thsub">' + esc(r.phase) + " · cap " + r.cap + "</span></td>" +
+        '<td class="num"><span class="badge-overall" style="background:' + pctColor(r.completion_pct) + ';min-width:52px;height:26px;font-size:13px">' + r.completion_pct + "%</span></td>" +
+        '<td class="num">' + r.max_concurrent + "</td>" +
+        '<td class="num">' + (r.wall_p50 != null ? Math.round(r.wall_p50) + "s" : "—") + "</td>" +
+        '<td class="num">' + r.cap_429 + '<span class="thsub"> pod ' + r.cap_pod + " · usr " + r.cap_user + "</span></td>" +
+        '<td class="num">' + r.session_409 + "</td>" +
+        '<td class="num">' + r.throughput_per_min + "/min</td>" +
+        "<td>" + esc(fail) + (r.errors ? " · " + r.errors + " err" : "") + "</td>" +
+        "</tr>";
+    }).join("");
+    document.getElementById("cc-runs").innerHTML =
+      '<table class="simple cc-runs"><thead><tr><th>Run</th><th class="num">Completed</th><th class="num">Max concurrent</th>' +
+      '<th class="num">Wall p50</th><th class="num">cap-429</th><th class="num">409</th><th class="num">Throughput</th><th>Dominant failure</th></tr></thead><tbody>' +
+      rows + "</tbody></table>";
+
+    // per-run detail cards
+    document.getElementById("cc-detail").innerHTML = C.runs.map(function (r) {
+      var pu = Object.keys(r.per_user_completed || {});
+      var puMax = Math.max.apply(null, pu.map(function (k) { return r.per_user_completed[k]; }).concat([1]));
+      var puBars = pu.map(function (k) {
+        return '<span class="pu"><i style="height:' + Math.max(3, r.per_user_completed[k] / puMax * 34) + 'px"></i><em>u' + k + "</em></span>";
+      }).join("");
+      return '<div class="card cc-card">' +
+        '<div class="cc-card-h"><b>' + esc(r.label) + "</b>" + (r.contaminated ? ' <span class="tagx warn">contaminated</span>' : "") + "</div>" +
+        '<div class="cc-big" style="color:' + pctColor(r.completion_pct) + '">' + r.completion_pct + '%<span> completed</span></div>' +
+        '<div class="cc-stats">' +
+          statx("queries", r.n) + statx("max concurrent", r.max_concurrent) + statx("wall p50", (r.wall_p50 != null ? Math.round(r.wall_p50) + "s" : "—")) +
+          statx("timeout", r.timeout) + statx("cap-abandon", r.cap_abandoned) + statx("errors", r.errors) +
+        "</div>" +
+        '<div class="cc-sub2">throughput (completions / 5-min)</div>' + spark(r.completions_per_5min) +
+        '<div class="cc-sub2">per-user completed</div><div class="pu-row">' + puBars + "</div>" +
+        (r.window_ist ? '<div class="cc-win">IST ' + esc(r.window_ist) + "</div>" : "") +
+        '<p class="cc-note">' + esc(r.note) + "</p>" +
+      "</div>";
+    }).join("");
+
+    // improvements
+    var conf = C.improvements;
+    document.getElementById("cc-improve-sub").innerHTML =
+      "Verified concurrency improvements from the clean cap-15 run (adversarially checked against the code), tracked under " + issueLink(m.parent_issue, "#" + m.parent_issue) + ".";
+    document.getElementById("cc-improve").innerHTML =
+      '<table class="simple cc-improve"><thead><tr><th>Issue</th><th>Improvement</th><th class="num">Severity</th><th class="num">Bottleneck</th><th class="num">Effort</th><th>Fix</th></tr></thead><tbody>' +
+      conf.map(function (i) {
+        return "<tr><td>" + issueLink(i.issue) + "</td><td><b>" + esc(i.title) + "</b></td>" +
+          '<td class="num">' + esc(i.sev) + "</td>" +
+          '<td class="num">' + (i.bottleneck ? '<span class="tagx hot">yes</span>' : "—") + "</td>" +
+          '<td class="num">' + esc(i.effort) + "</td><td>" + esc(i.one_liner) + "</td></tr>";
+      }).join("") + "</tbody></table>";
+
+    // methodology + refuted
+    document.getElementById("cc-refuted").innerHTML =
+      "Each query POSTs to <code>/api/query</code> and the answer is read back via issue-API polling, correlated by a unique " +
+      "<code>[[q:…]]</code> marker; 5 distinct users each on their own spoofed IP fire in parallel. " +
+      '<div class="cc-sub2">Refuted (adversarially checked — not the bottleneck):</div><ul class="cc-ref">' +
+      m.refuted.map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("") + "</ul>";
+  }
+  function statx(k, v) { return '<div class="sx"><div class="sk">' + esc(k) + '</div><div class="sv">' + (v == null ? "—" : v) + "</div></div>"; }
+
   // ---------- boot ----------
   document.addEventListener("DOMContentLoaded", function () {
     var sub = document.getElementById("doc-sub");
     if (sub && R.meta.subtitle) sub.textContent = R.meta.subtitle;
     renderAnalytics();
     renderTests();
+    renderConcurrency();
   });
 })();

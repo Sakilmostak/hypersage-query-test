@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Concurrency — HyperSage Trace Eval</title>
+  <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="brand"><span class="dot"></span><b>HyperSage Trace · Eval Report</b>
+      <span class="sub" id="doc-sub">Concurrency load test</span></div>
+    <nav>
+      <a href="index.html">Analytics</a>
+      <a href="tests.html">Tests</a>
+      <a href="concurrency.html" class="active">Concurrency</a>
+    </nav>
+  </header>
+
+  <main id="concurrency">
+    <h1 class="page">Concurrency load test</h1>
+    <p class="page-sub">5 users × 3 concurrency × up to 50 queries, fired in parallel (multi-IP via
+      <code>X-Forwarded-For</code>) against the deployed HyperSage trace agent — measuring how admission,
+      fairness, and per-investigation latency behave under concurrent load.</p>
+
+    <section><div id="cc-headline"></div></section>
+
+    <section>
+      <h2>Runs — before / after</h2>
+      <div id="cc-runs"></div>
+    </section>
+
+    <section>
+      <h2>Per-run detail</h2>
+      <div class="cards" id="cc-detail"></div>
+    </section>
+
+    <section>
+      <h2>Improvements identified</h2>
+      <p class="page-sub" id="cc-improve-sub"></p>
+      <div id="cc-improve"></div>
+    </section>
+
+    <section>
+      <h2>Methodology &amp; caveats</h2>
+      <div class="note" id="cc-refuted"></div>
+    </section>
+  </main>
+
+  <footer class="foot">Concurrency load-test harness: <code>scripts/load_test_trace.py</code> · issue-API polling + marker correlation.</footer>
+
+  <script src="concurrency_data.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>
